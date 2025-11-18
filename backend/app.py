@@ -11,6 +11,9 @@ from io import BytesIO
 from typing import List
 
 # VADER imports
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+vader = SentimentIntensityAnalyzer()
+
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
@@ -159,35 +162,52 @@ async def health():
 #                          HYBRID ANALYSIS
 # --------------------------------------------------------------------
 def hybrid_predict(text):
-    """Combine VADER + Logistic Regression prediction."""
+    """Combine VADER + Logistic Regression prediction + return full scores."""
 
     # 1. VADER
-    vader_scores = vader.polarity_scores(text)
-    vader_label = (
-        "positive" if vader_scores["compound"] >= 0.05 else
-        "negative" if vader_scores["compound"] <= -0.05 else
-        "neutral"
-    )
+    vader_scores = vader_full_scores(text)
 
-    # 2. Logistic Regression (TF-IDF)
+    # 2. Logistic Regression
     cleaned = clean_text(text)
     X = vectorizer.transform([cleaned])
     lr_pred = model.predict(X)[0]
-    lr_prob = model.predict_proba(X)[0][1]  # probability of positive
+    lr_prob = model.predict_proba(X)[0][1]
 
     lr_label = "positive" if lr_pred == 1 else "negative"
 
-    # 3. Hybrid fusion logic
-    if vader_label == "neutral":
+    # 3. Hybrid fusion
+    if vader_scores["label"] == "neutral":
         final_label = lr_label
     else:
-        final_label = vader_label
+        final_label = vader_scores["label"]
 
     return {
-        "vader": vader_label,
+        "vader": vader_scores,          # full VADER dictionary
         "logreg": lr_label,
         "logreg_score": float(lr_prob),
         "final": final_label
+    }
+
+
+def vader_full_scores(text: str):
+    """
+    Return full VADER sentiment scores + label.
+    """
+    scores = vader.polarity_scores(text)
+    compound = scores["compound"]
+
+    label = (
+        "positive" if compound >= 0.05 else
+        "negative" if compound <= -0.05 else
+        "neutral"
+    )
+
+    return {
+        "label": label,
+        "compound": compound,
+        "pos": scores["pos"],
+        "neu": scores["neu"],
+        "neg": scores["neg"]
     }
 
 
@@ -196,23 +216,76 @@ def hybrid_predict(text):
 # --------------------------------------------------------------------
 @app.post("/analyze")
 async def analyze_tweets(payload: AnalyzeRequest):
-    """
-    Analyze tweets using the hybrid model, returning:
-    { "data": [{ "tweet": ..., "sentiment": ..., "score": ... }, ...] }
-    """
+
     if not HYBRID_READY:
-        raise HTTPException(status_code=503, detail="Hybrid model not loaded. Check backend logs.")
+        raise HTTPException(status_code=503, detail="Hybrid model not loaded.")
 
     results = []
+
     for item in payload.tweets:
-        hybrid_result = hybrid_predict(item.text)
+        res = hybrid_predict(item.text)
+
         results.append({
             "tweet": item.text,
-            "sentiment": hybrid_result["final"],  
-            "score": hybrid_result["logreg_score"]    
+            "final_sentiment": res["final"],
+            "logistic_regression": res["logreg"],
+            "logreg_score": res["logreg_score"],
+            "vader": res["vader"],  # full VADER scores here
         })
 
     return {"data": results}
+
+# --------------------------------------------------------------------
+#                     /vader-dashboard ENDPOINT
+# --------------------------------------------------------------------
+@app.post("/vader-dashboard")
+async def vader_dashboard(req: AnalyzeRequest):
+
+    if not HYBRID_READY:
+        raise HTTPException(503, "Hybrid model not loaded.")
+
+    scores_list = []
+    compounds = []
+    pos_scores = []
+    neu_scores = []
+    neg_scores = []
+
+    sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+
+    for item in req.tweets:
+        vader_res = vader_full_scores(item.text)
+
+        scores_list.append({
+            "tweet": item.text,
+            "pos": vader_res["pos"],
+            "neu": vader_res["neu"],
+            "neg": vader_res["neg"],
+            "compound": vader_res["compound"],
+            "label": vader_res["label"]
+        })
+
+        compounds.append(vader_res["compound"])
+        pos_scores.append(vader_res["pos"])
+        neu_scores.append(vader_res["neu"])
+        neg_scores.append(vader_res["neg"])
+
+        sentiment_counts[vader_res["label"]] += 1
+
+    dashboard = {
+        "summary": {
+            "average_compound": float(sum(compounds) / len(compounds)),
+            "average_pos": float(sum(pos_scores) / len(pos_scores)),
+            "average_neu": float(sum(neu_scores) / len(neu_scores)),
+            "average_neg": float(sum(neg_scores) / len(neg_scores)),
+            "total_tweets": len(req.tweets)
+        },
+        "distribution": sentiment_counts,
+        "scores": scores_list,  # full detail for table display
+        "compound_values": compounds,
+    }
+
+    return dashboard
+
 
 # --------------------------------------------------------------------
 #                        /download ENDPOINT
@@ -229,7 +302,11 @@ async def download_excel(req: AnalyzeRequest):
         res = hybrid_predict(item.text)
         rows.append({
             "Tweet": item.text,
-            "VADER": res["vader"],
+            "VADER_Label": res["vader"]["label"],
+            "VADER_Compound": res["vader"]["compound"],
+            "VADER_Positive": res["vader"]["pos"],
+            "VADER_Neutral": res["vader"]["neu"],
+            "VADER_Negative": res["vader"]["neg"],
             "LogisticRegression": res["logreg"],
             "Final_Prediction": res["final"],
             "LogReg_Confidence": f"{res['logreg_score']:.2%}",

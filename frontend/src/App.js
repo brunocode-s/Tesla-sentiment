@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Upload, BarChart3, Download, FileText, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import html2canvas from "html2canvas";
+import VaderBreakdownCard from './components/VaderBreakdownCard';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
+
 const Container = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #EBF4FF 0%, #C3DAFE 100%);
@@ -235,37 +241,28 @@ const BarLabels = styled.div`
   color: #6B7280;
 `;
 
-const BarChartBarContainer = styled.div`
-  flex: 1;
-  background-color: #F3F4F6;
-  border-radius: 0.5rem;
-  height: 2.5rem;
-  overflow: hidden;
-  position: relative;
-`;
+// const pieData = (stats) => ({
+//   labels: ["Positive", "Negative"],
+//   datasets: [
+//     {
+//       data: [stats.positive || 0, stats.negative || 0],
+//       backgroundColor: ["#10B981", "#EF4444"], 
+//       borderWidth: 0,
+//     },
+//   ],
+// });
 
-const BarChartBar = styled.div`
-  height: 100%;
-  background: ${props => props.color};
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  padding: 0 1rem;
-  color: white;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: width 0.5s ease;
-  width: ${props => props.width}%;
-  min-width: ${props => props.width > 0 ? '50px' : '0'};
-`;
-
-const BarChartValue = styled.div`
-  min-width: 60px;
-  text-align: right;
-  font-weight: 600;
-  font-size: 1rem;
-  color: #1F2937;
-`;
+// const pieOptions = {
+//   responsive: true,
+//   plugins: {
+//     legend: {
+//       position: "bottom",
+//       labels: {
+//         font: { size: 14 },
+//       },
+//     },
+//   },
+// };
 
 const DownloadButton = styled.button`
   width: 100%;
@@ -433,6 +430,7 @@ const SentimentAnalyzer = () => {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({ positive: 0, negative: 0 });
   const [backendStatus, setBackendStatus] = useState(null);
+  const [vaderStats, setVaderStats] = useState(null);
   const chartRef = useRef(null);
 
   useEffect(() => {
@@ -508,21 +506,35 @@ const SentimentAnalyzer = () => {
       }
       
       const responseData = await response.json();
-      
       const data = responseData.data || responseData;
+      console.log('Backend response:', data); 
       setResults(data);
       
+      const vaderResponse = await fetch('http://127.0.0.1:8000/vader-dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tweets })
+      });
+      
+      if (vaderResponse.ok) {
+        const vaderData = await vaderResponse.json();
+        console.log('VADER dashboard data:', vaderData); 
+        setVaderStats(vaderData.summary);
+      }
+      
+      // Calculate stats
       const positive = data.filter(r => 
-        (r.sentiment || '').toLowerCase() === 'positive'
+        (r.final_sentiment || '').toLowerCase() === 'positive'
       ).length;
+      
       const negative = data.filter(r => 
-        (r.sentiment || '').toLowerCase() === 'negative'
+        (r.final_sentiment || '').toLowerCase() === 'negative'
       ).length;
       
       setStats({ positive, negative });
       
     } catch (err) {
-      setError(err.message || 'Error connecting to backend. Make sure FastAPI server is running on port 8000.');
+      setError(err.message || 'Error connecting to backend.');
       console.error('Analysis error:', err);
     } finally {
       setLoading(false);
@@ -694,6 +706,7 @@ const SentimentAnalyzer = () => {
 
             <ChartCard ref={chartRef}>
               <ChartTitle>Sentiment Distribution</ChartTitle>
+              <VaderBreakdownCard vader={vaderStats} />
               <BarContainer>
                 <BarSegment color="#10B981" width={positivePercent}>
                   {positivePercent > 10 && `${positivePercent}%`}
@@ -739,20 +752,20 @@ const SentimentAnalyzer = () => {
                         <Td muted nowrap>{idx + 1}</Td>
                         <Td maxWidth="500px">{result.tweet}</Td>
                         <Td nowrap>
-                          <Badge positive={(result.sentiment || '').toLowerCase() === 'positive'}>
-                            {result.sentiment}
-                          </Badge>
+                        <Badge positive={(result.final_sentiment || '').toLowerCase() === 'positive'}>
+                          {result.final_sentiment}
+                        </Badge>
                         </Td>
                         <Td nowrap>
                           <ConfidenceContainer>
                             <ProgressBar>
-                              <ProgressFill 
-                                positive={(result.sentiment || '').toLowerCase() === 'positive'}
-                                width={result.score * 100}
-                              />
+                            <ProgressFill 
+                              positive={(result.final_sentiment || '').toLowerCase() === 'positive'}
+                              width={result.logreg_score * 100}
+                            />
                             </ProgressBar>
                             <ConfidenceText>
-                              {(result.score * 100).toFixed(1)}%
+                              {(result.logreg_score * 100).toFixed(1)}%
                             </ConfidenceText>
                           </ConfidenceContainer>
                         </Td>
