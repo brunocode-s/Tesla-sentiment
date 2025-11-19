@@ -26,7 +26,7 @@ app = FastAPI(title="Tesla Sentiment Analysis API (Hybrid Model)")
 # Enable CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

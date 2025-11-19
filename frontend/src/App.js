@@ -166,7 +166,11 @@ const Grid = styled.div`
   margin-bottom: 2rem;
 
   @media (min-width: 768px) {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
   }
 `;
 
@@ -428,7 +432,7 @@ const SentimentAnalyzer = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState({ positive: 0, negative: 0 });
+  const [stats, setStats] = useState({ positive: 0, negative: 0, neutral: 0 });
   const [backendStatus, setBackendStatus] = useState(null);
   const [vaderStats, setVaderStats] = useState(null);
   const chartRef = useRef(null);
@@ -507,7 +511,6 @@ const SentimentAnalyzer = () => {
       
       const responseData = await response.json();
       const data = responseData.data || responseData;
-      console.log('Backend response:', data); 
       setResults(data);
       
       const vaderResponse = await fetch('http://127.0.0.1:8000/vader-dashboard', {
@@ -518,20 +521,16 @@ const SentimentAnalyzer = () => {
       
       if (vaderResponse.ok) {
         const vaderData = await vaderResponse.json();
-        console.log('VADER dashboard data:', vaderData); 
         setVaderStats(vaderData.summary);
+        
+        // Calculate stats from VADER distribution
+        const distribution = vaderData.distribution;
+        setStats({
+          positive: distribution.positive || 0,
+          negative: distribution.negative || 0,
+          neutral: distribution.neutral || 0
+        });
       }
-      
-      // Calculate stats
-      const positive = data.filter(r => 
-        (r.final_sentiment || '').toLowerCase() === 'positive'
-      ).length;
-      
-      const negative = data.filter(r => 
-        (r.final_sentiment || '').toLowerCase() === 'negative'
-      ).length;
-      
-      setStats({ positive, negative });
       
     } catch (err) {
       setError(err.message || 'Error connecting to backend.');
@@ -595,9 +594,10 @@ const SentimentAnalyzer = () => {
     }
   };  
 
-  const totalTweets = stats.positive + stats.negative;
+  const totalTweets = stats.positive + stats.negative + stats.neutral;
   const positivePercent = totalTweets ? (stats.positive / totalTweets * 100).toFixed(1) : 0;
   const negativePercent = totalTweets ? (stats.negative / totalTweets * 100).toFixed(1) : 0;
+  const neutralPercent = totalTweets ? (stats.neutral / totalTweets * 100).toFixed(1) : 0;
 
   return (
     <Container>
@@ -680,9 +680,22 @@ const SentimentAnalyzer = () => {
               <StatCard gradient="linear-gradient(135deg, #10B981 0%, #059669 100%)">
                 <StatContent>
                   <div>
-                    <StatLabel light>Positive</StatLabel>
+                    <StatLabel light>Positive (VADER)</StatLabel>
                     <StatValue>{stats.positive}</StatValue>
                     <StatPercent>{positivePercent}%</StatPercent>
+                  </div>
+                  <IconWrapper>
+                    <BarChart3 size={48} />
+                  </IconWrapper>
+                </StatContent>
+              </StatCard>
+
+              <StatCard gradient="linear-gradient(135deg, #F59E0B 0%, #D97706 100%)">
+                <StatContent>
+                  <div>
+                    <StatLabel light>Neutral (VADER)</StatLabel>
+                    <StatValue>{stats.neutral}</StatValue>
+                    <StatPercent>{neutralPercent}%</StatPercent>
                   </div>
                   <IconWrapper>
                     <BarChart3 size={48} />
@@ -693,7 +706,7 @@ const SentimentAnalyzer = () => {
               <StatCard gradient="linear-gradient(135deg, #EF4444 0%, #DC2626 100%)">
                 <StatContent>
                   <div>
-                    <StatLabel light>Negative</StatLabel>
+                    <StatLabel light>Negative (VADER)</StatLabel>
                     <StatValue>{stats.negative}</StatValue>
                     <StatPercent>{negativePercent}%</StatPercent>
                   </div>

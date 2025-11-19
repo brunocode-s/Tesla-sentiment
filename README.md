@@ -11,7 +11,7 @@ A full-stack sentiment analysis application that analyzes Tesla-related tweets u
 - **Hybrid Sentiment Analysis**: Combines VADER (lexicon-based) and Logistic Regression (ML-based) for accurate predictions
 - **Interactive Web Interface**: Beautiful React-based UI with real-time analysis
 - **File Upload Support**: Upload Excel (.xlsx, .xls) or CSV files
-- **Visual Analytics**: 
+- **Visual Analytics**:
   - Summary statistics cards
   - Horizontal distribution bar
   - Vertical bar chart comparison
@@ -22,16 +22,19 @@ A full-stack sentiment analysis application that analyzes Tesla-related tweets u
 ## Prerequisites
 
 ### Backend Requirements
+
 - Python 3.8 or higher
 - pip (Python package manager)
 
 ### Frontend Requirements
+
 - Node.js 14 or higher
 - npm or yarn
 
 ## Installation
 
 ### 1. Clone the Repository
+
 ```bash
 https://github.com/brunocode-s/Tesla-sentiment.git
 cd tesla-sentiment-analyzer
@@ -40,19 +43,23 @@ cd tesla-sentiment-analyzer
 ### 2. Backend Setup
 
 #### Install Python Dependencies
+
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
 #### Download NLTK Data
+
 The VADER lexicon will be automatically downloaded on first run, but you can manually download it:
+
 ```python
 import nltk
 nltk.download('vader_lexicon')
 ```
 
 #### Project Structure
+
 ```
 backend/
 ├── main.py                 # FastAPI application
@@ -63,6 +70,7 @@ backend/
 ```
 
 **Required Python Packages** (`requirements.txt`):
+
 ```
 fastapi==0.100.0
 uvicorn[standard]==0.23.0
@@ -76,12 +84,14 @@ openpyxl==3.1.2
 ### 3. Frontend Setup
 
 #### Install Node Dependencies
+
 ```bash
 cd frontend
 npm install
 ```
 
 **Required NPM Packages**:
+
 ```json
 {
   "dependencies": {
@@ -97,18 +107,23 @@ npm install
 ## Running the Application
 
 ### 1. Start the Backend Server
+
 ```bash
+
 cd backend
-python main.py
+source .venv/bin/activate
+uvicorn app:app --reload --port 8000
 ```
 
 The FastAPI server will start at `http://127.0.0.1:8000`
 
 You can access:
+
 - **API Documentation**: http://127.0.0.1:8000/docs
 - **Health Check**: http://127.0.0.1:8000/health
 
 ### 2. Start the Frontend Development Server
+
 ```bash
 cd frontend
 npm start
@@ -119,21 +134,25 @@ The React app will start at `http://localhost:3000`
 ## 📖 Usage
 
 ### Step 1: Prepare Your Data
+
 Create an Excel or CSV file with tweets in the **first column**. Example format:
 
-| Tweet Text |
-|------------|
-| Tesla's new model is amazing! |
+| Tweet Text                             |
+| -------------------------------------- |
+| Tesla's new model is amazing!          |
 | Disappointed with the customer service |
-| Love my Tesla, best car ever! |
+| Love my Tesla, best car ever!          |
 
 ### Step 2: Upload File
+
 1. Open the web application at `http://localhost:3000`
 2. Click the upload area or drag and drop your file
 3. Supported formats: `.xlsx`, `.xls`, `.csv`
 
 ### Step 3: View Results
+
 The application will display:
+
 - **Total Tweets**: Count of analyzed tweets
 - **Positive Sentiment**: Count and percentage
 - **Negative Sentiment**: Count and percentage
@@ -142,7 +161,9 @@ The application will display:
 - **Detailed Table**: Individual tweet results with confidence scores
 
 ### Step 4: Download Report
+
 Click the "Download Full Report" button to get an Excel file containing:
+
 - Original tweet text
 - VADER prediction
 - Logistic Regression prediction
@@ -152,14 +173,16 @@ Click the "Download Full Report" button to get an Excel file containing:
 ## How the Hybrid Model Works
 
 ### 1. VADER Sentiment Analysis
+
 - Lexicon-based approach
 - Analyzes text for sentiment-bearing words
-- Returns compound score: 
+- Returns compound score:
   - `≥ 0.05` = Positive
   - `≤ -0.05` = Negative
   - Between = Neutral
 
 ### 2. Logistic Regression with TF-IDF
+
 - Machine learning approach
 - Text is cleaned (removes URLs, mentions, hashtags)
 - TF-IDF vectorization converts text to numerical features
@@ -167,6 +190,7 @@ Click the "Download Full Report" button to get an Excel file containing:
 - Returns probability score (0-1)
 
 ### 3. Hybrid Fusion Logic
+
 ```python
 if VADER prediction == "neutral":
     final_prediction = Logistic_Regression_prediction
@@ -179,18 +203,23 @@ This approach leverages VADER's strength in handling explicit sentiment while fa
 ## API Endpoints
 
 ### `GET /`
+
 Returns API information and available endpoints
 
 ### `GET /health`
+
 Health check endpoint showing:
+
 - Backend status
 - Hybrid model readiness
 - Artifacts existence
 
 ### `POST /analyze`
+
 Analyzes sentiment of tweets
 
 **Request Body**:
+
 ```json
 {
   "tweets": [
@@ -201,6 +230,7 @@ Analyzes sentiment of tweets
 ```
 
 **Response**:
+
 ```json
 {
   "data": [
@@ -219,6 +249,7 @@ Analyzes sentiment of tweets
 ```
 
 ### `POST /download`
+
 Generates and downloads Excel report with detailed analysis
 
 **Request Body**: Same as `/analyze`
@@ -247,6 +278,7 @@ tesla-sentiment-analyzer/
 ## Tech Stack
 
 ### Backend
+
 - **FastAPI**: Modern, fast web framework for building APIs
 - **NLTK**: Natural Language Toolkit for VADER
 - **scikit-learn**: Machine learning library for Logistic Regression
@@ -254,6 +286,7 @@ tesla-sentiment-analyzer/
 - **openpyxl**: Excel file creation
 
 ### Frontend
+
 - **React**: UI library
 - **styled-components**: CSS-in-JS styling
 - **lucide-react**: Icon library
@@ -264,15 +297,18 @@ tesla-sentiment-analyzer/
 ### Backend Issues
 
 **Model files not found**
+
 - Ensure `vectorizer.pkl` and `model.pkl` are in the `backend/artifacts/` directory
 - Check file permissions
 
 **VADER lexicon error**
+
 ```bash
 python -c "import nltk; nltk.download('vader_lexicon')"
 ```
 
 **Port 8000 already in use**
+
 ```bash
 # Change port in main.py
 uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
@@ -281,15 +317,18 @@ uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
 ### Frontend Issues
 
 **CORS errors**
+
 - Ensure backend is running
 - Check that backend URL in frontend matches: `http://127.0.0.1:8000`
 
 **File upload not working**
+
 - Verify file format (first column contains text)
 - Check browser console for error messages
 - Ensure file is not empty
 
 **Backend connection failed**
+
 - Verify backend server is running on port 8000
 - Check the status badge at the top of the page
 - Review browser network tab for failed requests
@@ -301,6 +340,7 @@ If you want to retrain the model with your own data:
 1. Prepare training data with tweets and labels (0=negative, 1=positive)
 2. Train TF-IDF vectorizer and Logistic Regression model
 3. Save models using pickle:
+
 ```python
 import pickle
 
@@ -313,6 +353,4 @@ with open('artifacts/model.pkl', 'wb') as f:
     pickle.dump(model, f)
 ```
 
-
 k
-
