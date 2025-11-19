@@ -4,7 +4,7 @@ import { Upload, BarChart3, Download, FileText, TrendingUp, AlertCircle, CheckCi
 
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import html2canvas from "html2canvas";
-import VaderBreakdownCard from './components/VaderBreakdownCard';
+// import VaderBreakdownCard from './components/VaderBreakdownCard';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -719,7 +719,7 @@ const SentimentAnalyzer = () => {
 
             <ChartCard ref={chartRef}>
               <ChartTitle>Sentiment Distribution</ChartTitle>
-              <VaderBreakdownCard vader={vaderStats} />
+              {/* <VaderBreakdownCard vader={vaderStats} /> */}
               <BarContainer>
                 <BarSegment color="#10B981" width={positivePercent}>
                   {positivePercent > 10 && `${positivePercent}%`}
